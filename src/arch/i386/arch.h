@@ -193,8 +193,27 @@ inline int tzcnt(T n) {
 #endif
 }
 
+#ifdef __SSE2__
+
+template<typename T>
+struct is_valid_vector {
+    static constexpr bool value = sizeof(T) == 16
+#ifdef __AVX2__
+                               || sizeof(T) == 32
+#endif
+#ifdef __AVX512F__
+                               || sizeof(T) == 64
+#endif
+      ;
+};
+
+template<typename T>
+inline constexpr bool is_valid_vector_v = is_valid_vector<T>::value;
+
 template<typename T>
 inline T _mm_setzero_v() {
+    static_assert(is_valid_vector_v<T>);
+
 #ifdef __AVX512F__
     if constexpr (sizeof(T) == 64)
         return _mm512_setzero_si512();
@@ -205,14 +224,14 @@ inline T _mm_setzero_v() {
         return _mm256_setzero_si256();
 #endif
 
-#ifdef __SSE2__
     if constexpr (sizeof(T) == 16)
         return _mm_setzero_si128();
-#endif
 }
 
 template<typename T>
 inline T _mm_set1_epi16_v(std::uint16_t n) {
+    static_assert(is_valid_vector_v<T>);
+
 #ifdef __AVX512F__
     if constexpr (sizeof(T) == 64)
         return _mm512_set1_epi16(n);
@@ -223,14 +242,14 @@ inline T _mm_set1_epi16_v(std::uint16_t n) {
         return _mm256_set1_epi16(n);
 #endif
 
-#ifdef __SSE2__
     if constexpr (sizeof(T) == 16)
         return _mm_set1_epi16(n);
-#endif
 }
 
 template<typename T>
 inline T _mm_set1_epi32_v(std::uint32_t n) {
+    static_assert(is_valid_vector_v<T>);
+
 #ifdef __AVX512F__
     if constexpr (sizeof(T) == 64)
         return _mm512_set1_epi32(n);
@@ -241,14 +260,14 @@ inline T _mm_set1_epi32_v(std::uint32_t n) {
         return _mm256_set1_epi32(n);
 #endif
 
-#ifdef __SSE2__
     if constexpr (sizeof(T) == 16)
         return _mm_set1_epi32(n);
-#endif
 }
 
 template<typename T>
 inline T _mm_packus_epi16_v(T a, T b) {
+    static_assert(is_valid_vector_v<T>);
+
 #ifdef __AVX512F__
     if constexpr (sizeof(T) == 64)
 #ifdef __AVX512BW__
@@ -267,14 +286,14 @@ inline T _mm_packus_epi16_v(T a, T b) {
 #endif
 #endif
 
-#ifdef __SSE2__
     if constexpr (sizeof(T) == 16)
         return _mm_packus_epi16(a, b);
-#endif
 }
 
 template<typename T>
 inline T _mm_add_epi16_v(T a, T b) {
+    static_assert(is_valid_vector_v<T>);
+
 #ifdef __AVX512F__
     if constexpr (sizeof(T) == 64)
 #ifdef __AVX512BW__
@@ -293,14 +312,14 @@ inline T _mm_add_epi16_v(T a, T b) {
 #endif
 #endif
 
-#ifdef __SSE2__
     if constexpr (sizeof(T) == 16)
         return _mm_add_epi16(a, b);
-#endif
 }
 
 template<typename T>
 inline T _mm_add_epi32_v(T a, T b) {
+    static_assert(is_valid_vector_v<T>);
+
 #ifdef __AVX512F__
     if constexpr (sizeof(T) == 64)
         return _mm512_add_epi32(a, b);
@@ -315,14 +334,14 @@ inline T _mm_add_epi32_v(T a, T b) {
 #endif
 #endif
 
-#ifdef __SSE2__
     if constexpr (sizeof(T) == 16)
         return _mm_add_epi32(a, b);
-#endif
 }
 
 template<typename T>
 inline T _mm_sub_epi16_v(T a, T b) {
+    static_assert(is_valid_vector_v<T>);
+
 #ifdef __AVX512F__
     if constexpr (sizeof(T) == 64)
 #ifdef __AVX512BW__
@@ -341,14 +360,14 @@ inline T _mm_sub_epi16_v(T a, T b) {
 #endif
 #endif
 
-#ifdef __SSE2__
     if constexpr (sizeof(T) == 16)
         return _mm_sub_epi16(a, b);
-#endif
 }
 
 template<typename T>
 inline T _mm_sub_epi32_v(T a, T b) {
+    static_assert(is_valid_vector_v<T>);
+
 #ifdef __AVX512F__
     if constexpr (sizeof(T) == 64)
         return _mm512_sub_epi32(a, b);
@@ -363,14 +382,14 @@ inline T _mm_sub_epi32_v(T a, T b) {
 #endif
 #endif
 
-#ifdef __SSE2__
     if constexpr (sizeof(T) == 16)
         return _mm_sub_epi32(a, b);
-#endif
 }
 
 template<typename T>
 inline T _mm_mulhi_epi16_v(T a, T b) {
+    static_assert(is_valid_vector_v<T>);
+
 #ifdef __AVX512F__
     if constexpr (sizeof(T) == 64)
 #ifdef __AVX512BW__
@@ -389,14 +408,14 @@ inline T _mm_mulhi_epi16_v(T a, T b) {
 #endif
 #endif
 
-#ifdef __SSE2__
     if constexpr (sizeof(T) == 16)
         return _mm_mulhi_epi16(a, b);
-#endif
 }
 
 template<typename T>
 inline T _mm_slli_epi16_v(T a, int n) {
+    static_assert(is_valid_vector_v<T>);
+
 #ifdef __AVX512F__
     if constexpr (sizeof(T) == 64)
 #ifdef __AVX512BW__
@@ -415,14 +434,14 @@ inline T _mm_slli_epi16_v(T a, int n) {
 #endif
 #endif
 
-#ifdef __SSE2__
     if constexpr (sizeof(T) == 16)
         return _mm_slli_epi16(a, n);
-#endif
 }
 
 template<typename T>
 inline T _mm_max_epi16_v(T a, T b) {
+    static_assert(is_valid_vector_v<T>);
+
 #ifdef __AVX512F__
     if constexpr (sizeof(T) == 64)
 #ifdef __AVX512BW__
@@ -441,14 +460,14 @@ inline T _mm_max_epi16_v(T a, T b) {
 #endif
 #endif
 
-#ifdef __SSE2__
     if constexpr (sizeof(T) == 16)
         return _mm_max_epi16(a, b);
-#endif
 }
 
 template<typename T>
 inline T _mm_min_epi16_v(T a, T b) {
+    static_assert(is_valid_vector_v<T>);
+
 #ifdef __AVX512F__
     if constexpr (sizeof(T) == 64)
 #ifdef __AVX512BW__
@@ -467,14 +486,14 @@ inline T _mm_min_epi16_v(T a, T b) {
 #endif
 #endif
 
-#ifdef __SSE2__
     if constexpr (sizeof(T) == 16)
         return _mm_min_epi16(a, b);
-#endif
 }
 
 template<typename T>
 inline std::int32_t _mm_reduce_add_epi32_v(T a) {
+    static_assert(is_valid_vector_v<T>);
+
 #ifdef __AVX512F__
     if constexpr (sizeof(T) == 64)
         return _mm512_reduce_add_epi32(a);
@@ -490,14 +509,12 @@ inline std::int32_t _mm_reduce_add_epi32_v(T a) {
     }
 #endif
 
-#ifdef __SSE2__
     if constexpr (sizeof(T) == 16)
     {
         a = _mm_add_epi32(a, _mm_shuffle_epi32(a, 0x4E));  // _MM_PERM_BADC
         a = _mm_add_epi32(a, _mm_shuffle_epi32(a, 0xB1));  // _MM_PERM_CDAB
         return _mm_cvtsi128_si32(a);
     }
-#endif
 }
 
 // Non-VNNI implementation of dpbusd works even with type saturation, only
@@ -505,6 +522,8 @@ inline std::int32_t _mm_reduce_add_epi32_v(T a) {
 // AffineTransform layer. Do not use this without VNNI for general purpose.
 template<typename T>
 inline void _mm_dpbusd_epi32_v(T& acc, T a, T b) {
+    static_assert(is_valid_vector_v<T>);
+
 #ifdef __AVX512F__
     if constexpr (sizeof(T) == 64)
     {
@@ -542,7 +561,6 @@ inline void _mm_dpbusd_epi32_v(T& acc, T a, T b) {
     }
 #endif
 
-#ifdef __SSE2__
     if constexpr (sizeof(T) == 16)
     {
 #if (defined(__AVX512VL__) && defined(__AVX512VNNI__)) || defined(__AVXVNNI__)
@@ -568,8 +586,9 @@ inline void _mm_dpbusd_epi32_v(T& acc, T a, T b) {
 
 #endif
     }
-#endif
 }
+
+#endif  // __SSE2__
 
 }  // namespace Stockfish
 

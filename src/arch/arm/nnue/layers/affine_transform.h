@@ -85,8 +85,8 @@ void AffineTransform<InDims, OutDims>::propagate(const InputType* input, OutputT
 
         for (IndexType j = 0; j < NumChunks; ++j)
         {
-            const int32x4_t in  = reinterpret_cast<const int32x4_t*>(input)[j];
-            const int32x4_t row = reinterpret_cast<const int32x4_t*>(weights)[j];
+            const int8x16_t in  = reinterpret_cast<const int8x16_t*>(input)[j];
+            const int8x16_t row = reinterpret_cast<const int8x16_t*>(weights)[j];
             vdotq_s32_v(sum, in, row);
         }
 

@@ -37,6 +37,8 @@ else
     INSTALL_EXE := stockfish
 endif
 
+KERNEL := $(shell uname -s)
+
 strip:
 	-@test -f stockfish && strip stockfish
 	-@test -f stockfish.exe && strip stockfish.exe
@@ -47,7 +49,7 @@ install:
 	strip $(INSTALL_PATH)/$(INSTALL_EXE)
 
 clean: objclean profileclean
-	@rm -f .depend *~ core
+	@rm -f .depend
 
 objclean:
 	@rm -f stockfish stockfish.exe $(OBJS) *.o.tmp
@@ -108,8 +110,8 @@ ifeq ($(call test-compiler-macro,__GNUC__),1)
     else ifeq ($(call test-compiler-macro,__clang__),1)
         $(info Using LLVM C/C++ Compiler (Clang)) $(info )
         COMP := clang
-        CLANG_MAJOR := $(call get-compiler-macro,__clang_major__)
-        LLVM_PROFDATA := $(shell command -v llvm-profdata-$(CLANG_MAJOR) 2> /dev/null || \
+        CLANG_VERSION := $(call get-compiler-macro,__clang_major__)
+        LLVM_PROFDATA := $(shell command -v llvm-profdata-$(CLANG_VERSION) 2> /dev/null || \
 								 command -v llvm-profdata 2> /dev/null)
         profile_make = clang-profile-make
         profile_use  = clang-profile-use
@@ -117,6 +119,7 @@ ifeq ($(call test-compiler-macro,__GNUC__),1)
     else
         $(info Using GNU C/C++ Compiler) $(info )
         COMP := gcc
+        GCC_VERSION := $(call get-compiler-macro,__GNUC__)
         profile_make = gcc-profile-make
         profile_use  = gcc-profile-use
     endif
@@ -171,12 +174,20 @@ ifeq ($(optimize),yes)
     SF_CXXFLAGS += -O3
 
     ifeq ($(COMP),gcc)
-        SF_CXXFLAGS += -funroll-loops -flto=jobserver -flto-partition=one
-        SF_LDFLAGS  += -flto=jobserver -flto-partition=one
+        SF_CXXFLAGS += -funroll-loops
+        ifeq ($(shell expr $(GCC_VERSION) \< 12),1)
+            SF_CXXFLAGS += -flto
+            SF_LDFLAGS  += -flto
+        else
+            SF_CXXFLAGS += -flto=jobserver
+            SF_LDFLAGS  += -flto=jobserver
+        endif
+        SF_CXXFLAGS += -flto-partition=one
+        SF_LDFLAGS  += -flto-partition=one
     else ifeq ($(COMP),clang)
         SF_CXXFLAGS += -funroll-loops -flto=full
         SF_LDFLAGS  += -flto=full
-        ifeq ($(shell expr $(CLANG_MAJOR) \< 16),1)
+        ifeq ($(shell expr $(CLANG_VERSION) \< 16),1)
             SF_CXXFLAGS += -fexperimental-new-pass-manager
         endif
 	else ifeq ($(COMP),icx)
@@ -220,6 +231,8 @@ endif
 endif   # CXX_REQUIRED_RULES
 
 ### 3. Add flags from architecture-specific Makefile
+###   Note that this section is not enclosed in the CXX_REQUIRED_RULES block;
+###   Users shall be able to see the help text even when there is no compiler.
 
 ifeq ($(ARCH),)
     override ARCH := native
@@ -244,6 +257,28 @@ export ARCH
 
 SF_CXXFLAGS += -DARCH=$(ARCH)
 
+### 4. Extra flags for cross-compilation
+###   Information of target architecture is needed here.
+
+ifneq ($(filter $(MAKECMDGOALS),$(CXX_REQUIRED_RULES)),)
+
+# Android NDK
+ifneq ($(filter $(ARCH_FAMILY),i386 arm),)
+    ifeq ($(call test-compiler-macro,__ANDROID__),1)
+        SF_CXXFLAGS += -stdlib=libc++ -fPIE
+        SF_LDFLAGS  += -static-libstdc++ -pie
+        SF_LIBS     += m atomic
+    endif
+endif
+
+# Link atomic library if not i386/arm family
+ifneq ($(ARCH_NATIVE),y)
+    ifeq ($(filter $(ARCH_FAMILY),i386 arm),)
+        SF_LIBS += atomic
+    endif
+endif
+
+endif   # CXX_REQUIRED_RULES
 endif   # MAKELEVEL=0
 
 SF_CXXFLAGS := $(strip $(SF_CXXFLAGS) $(CXXFLAGS))
@@ -320,7 +355,7 @@ profile-build: config-sanity objclean profileclean
 	@echo "Step 1/4. Building instrumented executable ..."
 	@$(MAKE) --no-print-directory CXXFLAGS="" LDFLAGS="" $(profile_make)
 	@printf "\n%s\n" "Step 2/4. Running benchmark for pgo-build ..."
-	@./$(EXE) bench > PGOBENCH.out 2>&1
+	@$(EMULATE) ./$(EXE) bench > PGOBENCH.out 2>&1
 	@tail -n 4 PGOBENCH.out
 	@printf "\n%s\n" "Step 3/4. Building optimized executable ..."
 	@$(MAKE) --no-print-directory objclean
@@ -358,7 +393,7 @@ clang-profile-make:
 		CXXFLAGS="-fprofile-generate" LDFLAGS="-fprofile-generate" all
 
 clang-profile-use:
-	@$(XCRUN) $(LLVM_PROFDATA) merge -output=stockfish.profdata *.profraw
+	$(XCRUN) $(LLVM_PROFDATA) merge -output=stockfish.profdata *.profraw
 	@$(MAKE) --no-print-directory \
 		CXXFLAGS="-fprofile-use=stockfish.profdata" \
 		LDFLAGS="-fprofile-use=stockfish.profdata" \

@@ -33,7 +33,7 @@
 
 namespace Stockfish::Eval::NNUE::Layers {
 
-#ifdef __ARM_NEON
+#if __ARM_ARCH >= 8
 
 alignas(CacheLineSize) static const std::array<std::array<std::uint16_t, 8>, 256> lookupIndices =
   [] {
@@ -70,13 +70,13 @@ class AffineTransformSparseInput: public AffineTransform<InDims, OutDims> {
             const int32x4_t chunk0 = in[i * 2];
             const int32x4_t chunk1 = in[i * 2 + 1];
 
-            static const int32x4_t movemask = [] {
-                const std::int32_t n[4] = {1, 2, 4, 8};
-                return vld1q_s32(n);
+            static const uint32x4_t movemask = [] {
+                const std::uint32_t n[4] = {1, 2, 4, 8};
+                return vld1q_u32(n);
             }();
 
-            const std::uint32_t nnz = vaddvq_u32(vandq_s32(vtstq_s32(chunk0, chunk0), movemask))
-                                    | vaddvq_u32(vandq_s32(vtstq_s32(chunk1, chunk1), movemask))
+            const std::uint32_t nnz = vaddvq_u32(vandq_u32(vtstq_s32(chunk0, chunk0), movemask))
+                                    | vaddvq_u32(vandq_u32(vtstq_s32(chunk1, chunk1), movemask))
                                         << 4;
             const uint16x8_t offsets = *reinterpret_cast<const uint16x8_t*>(&lookupIndices[nnz]);
             *reinterpret_cast<uint16x8_t*>(indices + count) = vaddq_u16(base, offsets);
@@ -105,9 +105,10 @@ void AffineTransformSparseInput<InDims, OutDims>::propagate(const InputType* inp
 
     for (IndexType j = 0; j < count; ++j)
     {
-        const auto      i  = nnz[j];
-        const int32x4_t in = vdupq_n_s32(reinterpret_cast<const std::int32_t*>(input)[i]);
-        const auto col     = reinterpret_cast<const int32x4_t*>(&weights[i * OutputDimensions * 4]);
+        const auto      i = nnz[j];
+        const int8x16_t in =
+          vreinterpretq_s8_s32(vdupq_n_s32(reinterpret_cast<const std::int32_t*>(input)[i]));
+        const auto col = reinterpret_cast<const int8x16_t*>(&weights[i * OutputDimensions * 4]);
         for (std::size_t k = 0; k < array_size(acc); ++k)
             vdotq_s32_v(acc[k], in, col[k]);
     }
@@ -121,7 +122,7 @@ void AffineTransformSparseInput<InDims, OutDims>::propagate(const InputType* inp
 template<IndexType InDims, IndexType OutDims>
 using AffineTransformSparseInput = AffineTransform<InDims, OutDims>;
 
-#endif  // __ARM_NEON
+#endif  // __ARM_ARCH >= 8
 
 }  // namespace Stockfish::Eval::NNUE::Layers
 

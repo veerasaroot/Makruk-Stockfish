@@ -346,6 +346,6 @@ void FeatureTransformer<TransformedFeatureDimensions, accPtr>::convert_accumulat
 
 }  // namespace Stockfish::Eval::NNUE
 
-#endif  // !__SSE2__
+#endif  // !__ARM_NEON
 
 #endif  // ARM_NNUE_FEATURE_TRANSFORMER_H_INCLUDED

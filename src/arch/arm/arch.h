@@ -58,15 +58,16 @@ inline void vdotq_s32_v(int32x4_t& acc, int8x16_t in, int8x16_t col) {
 #ifdef __ARM_FEATURE_DOTPROD
     acc = vdotq_s32(acc, in, col);
 #elif __ARM_ARCH >= 8
-    int16x8_t product0 = vmull_s8(vget_low_s8(a), vget_low_s8(b));
-    int16x8_t product1 = vmull_high_s8(a, b);
+    int16x8_t product0 = vmull_s8(vget_low_s8(in), vget_low_s8(col));
+    int16x8_t product1 = vmull_high_s8(in, col);
     int16x8_t sum      = vpaddq_s16(product0, product1);
     acc                = vpadalq_s16(acc, sum);
 #else
-    int16x8_t product0 = vmull_s8(vget_low_s8(a), vget_low_s8(b));
-    int16x8_t product1 = vmull_s8(vget_high_s8(a), vget_high_s8(b));
-    int16x8_t sum      = vpaddq_s16(product0, product1);
-    acc                = vpadalq_s16(acc, sum);
+    int16x8_t product0 = vmull_s8(vget_low_s8(in), vget_low_s8(col));
+    int16x8_t product1 = vmull_s8(vget_high_s8(in), vget_high_s8(col));
+    int16x8_t sum =
+      vcombine_s16(vqmovn_s32(vpaddlq_s16(product0)), vqmovn_s32(vpaddlq_s16(product1)));
+    acc = vpadalq_s16(acc, sum);
 #endif
 }
 

@@ -60,7 +60,7 @@ void ClippedReLU<InDims>::propagate(const InputType* input, OutputType* output) 
 
         words.tuple.val[0] = vqshrn_n_s32(in[i * 2 + 0], WeightScaleBits);
         words.tuple.val[1] = vqshrn_n_s32(in[i * 2 + 1], WeightScaleBits);
-        out[i]             = vmax_s8(vqmovn_s16(words), vdup_n_s8(0));
+        out[i]             = vmax_s8(vqmovn_s16(words.all), vdup_n_s8(0));
 #endif
     }
 }
